@@ -44,7 +44,7 @@ _anchors:
 
   - &pagination
     pagination:
-      condition: !expr "prev_response_data and prev_response_data.metadata and prev_response_data.metadata.index < prev_response_data.metadata.totalPages - 1"
+      condition: !expr "prev_response_data and prev_response_data.metadata and prev_response_data.metadata.index < prev_response_data.metadata.total_pages - 1"
       params:
         size: 100
         page: !expr "prev_response_data.metadata.index + 1"
@@ -148,7 +148,7 @@ feeds:
       http:
         url: !tmpl "{{user_fields.api_base_url}}/integration/assets?size=100&page=0"
         method: POST
-        body: !json {}
+        body: !json {"asset": "", "vulnerability": ""}
         <<: *request_vars
         <<: *auth
         <<: *pagination
