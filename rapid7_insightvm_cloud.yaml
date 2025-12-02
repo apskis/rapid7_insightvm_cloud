@@ -44,10 +44,10 @@ _anchors:
 
   - &pagination
     pagination:
-      condition: !expr prev_response_data and prev_response_data.metadata and prev_response_data.metadata.totalPages > page_count
+      condition: !expr "prev_response_data and prev_response_data.metadata and prev_response_data.metadata.index < prev_response_data.metadata.totalPages - 1"
       params:
         size: 100
-        page: !expr page_count
+        page: !expr "prev_response_data.metadata.index + 1"
 
   - &create_description
     - if:
