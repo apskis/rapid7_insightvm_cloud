@@ -14,7 +14,7 @@
 # - Australia: https://au.api.insight.rapid7.com/vm/v4
 # - Japan: https://ap.api.insight.rapid7.com/vm/v4
 #
-# VERSION: 2.0.0 (Cloud Conversion)
+# VERSION: 1.0.3 (Cloud Conversion)
 # CONVERTED: 2025-10-23
 #
 version: "1.0.3"
@@ -146,7 +146,7 @@ feeds:
           rule: update
     source:
       http:
-        url: !tmpl "{{user_fields.api_base_url}}/integration/assets"
+        url: !tmpl "{{user_fields.api_base_url}}/integration/assets?size=100&page=0"
         method: POST
         body: !json {}
         <<: *request_vars
