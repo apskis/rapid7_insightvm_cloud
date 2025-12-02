@@ -1,0 +1,23 @@
+[
+    {
+        "code": "asset",
+        "name": "Assets",
+        "description": "An object defining an asset of an organization. Assets represent IT infrastructure such as servers, workstations, network devices, and other systems that may have vulnerabilities.",
+        "fg_color": "#ffffff",
+        "bg_color": "#db4e4e",
+        "fields": [
+            {
+                "field": "value",
+                "name": "Title",
+                "definition": "varchar(255) NOT NULL",
+                "required": "Yes"
+            },
+            {
+                "field": "description",
+                "name": "Description",
+                "definition": "text",
+                "required": "No"
+            }
+        ]
+    }
+]

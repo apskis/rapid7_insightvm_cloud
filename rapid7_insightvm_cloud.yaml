@@ -1,0 +1,327 @@
+# Rapid7 InsightVM Cloud Platform Integration for ThreatQ
+# Converted from on-prem version to Rapid7 Cloud API
+#
+# REQUIREMENTS:
+# - Rapid7 Platform API Key (Organization or User Key)
+#   Generate at: https://insight.rapid7.com/platform#/apiKeyManagement
+# - API Key must have "Read" permissions for InsightVM
+#
+# CLOUD REGIONS:
+# - US: https://us.api.insight.rapid7.com/vm/v4
+# - US2: https://us2.api.insight.rapid7.com/vm/v4
+# - EU: https://eu.api.insight.rapid7.com/vm/v4
+# - Canada: https://ca.api.insight.rapid7.com/vm/v4
+# - Australia: https://au.api.insight.rapid7.com/vm/v4
+# - Japan: https://ap.api.insight.rapid7.com/vm/v4
+#
+# VERSION: 2.0.0 (Cloud Conversion)
+# CONVERTED: 2025-10-23
+#
+version: "1.0.3"
+required_threatq_version: ">=5.10.0"
+
+template_values:
+  bool_map:
+    True: 'True'
+    1: 'True'
+    False: 'False'
+    0: 'False'
+    true: 'True'
+    false: 'False'
+
+_anchors:
+  - &auth
+    headers:
+      X-Api-Key: !expr user_fields.api_key
+      Accept: application/json
+      Content-Type: application/json
+
+  - &request_vars
+    response_content_type: application/json
+    verify_host_ssl: !expr user_fields.verify_ssl
+    disable_proxies: !expr 'user_fields.disable_proxies or False'
+    timeout: 300
+
+  - &pagination
+    pagination:
+      condition: !expr prev_response_data and prev_response_data.metadata and prev_response_data.metadata.totalPages > page_count
+      params:
+        size: 100
+        page: !expr page_count
+
+  - &create_description
+    - if:
+        condition: !expr value
+        filters:
+          # Add vulnerability overview
+          - set:
+              description: !tmpl "<h2>Vulnerability Overview</h2><p><strong>Total:</strong> {{value.total_vulnerabilities}}</p><ul>"
+          - if:
+              condition: !expr "value.get('critical_vulnerabilities', 0) > 0"
+              filters:
+                - set:
+                    description: !tmpl "{{value.description}}<li>Critical: {{value.critical_vulnerabilities}}</li>"
+          - if:
+              condition: !expr "value.get('severe_vulnerabilities', 0) > 0"
+              filters:
+                - set:
+                    description: !tmpl "{{value.description}}<li>Severe: {{value.severe_vulnerabilities}}</li>"
+          - if:
+              condition: !expr "value.get('moderate_vulnerabilities', 0) > 0"
+              filters:
+                - set:
+                    description: !tmpl "{{value.description}}<li>Moderate: {{value.moderate_vulnerabilities}}</li>"
+          - if:
+              condition: !expr "value.get('exploits', 0) > 0"
+              filters:
+                - set:
+                    description: !tmpl "{{value.description}}<li>Exploits: {{value.exploits}}</li>"
+          - if:
+              condition: !expr "value.get('malware_kits', 0) > 0"
+              filters:
+                - set:
+                    description: !tmpl "{{value.description}}<li>Malware Kits: {{value.malware_kits}}</li>"
+          - set:
+              description: !tmpl "{{value.description}}</ul>"
+          # Add last scan time
+          - if:
+              condition: !expr "value.get('last_scan_end')"
+              filters:
+                - set:
+                    description: !tmpl "{{value.description}}<p><strong>Last Scan Time</strong>: {{value.last_scan_end}}</p>"
+          - set:
+              description: !expr value.description[:32590]
+
+feeds:
+  Rapid7 insightVM Cloud - Assets:
+    category: Commercial
+    namespace: threatq.feeds.rapid7.insightvm.cloud
+    default_indicator_status: Active
+    timestamp_format: '%Y-%m-%dT%H:%M:%S.%fZ'
+    user_fields:
+      - name: api_base_url
+        label: Rapid7 API Base URL
+        description: Enter your full Rapid7 API base URL including region and version (e.g., https://us.api.insight.rapid7.com/vm/v4)
+        required: True
+        default: https://us.api.insight.rapid7.com/vm/v4
+      - name: api_key
+        label: Rapid7 Platform API Key
+        mask: True
+        description: Enter your Rapid7 Platform API Key (Organization or User Key from https://insight.rapid7.com/platform#/apiKeyManagement)
+        required: True
+      - name: only_vulnerable
+        label: Only Ingest Vulnerable Assets
+        description: Do you want to track all assets or only ones with vulnerabilities
+        boolean: True
+        default: True
+      - name: risk_score_threshold
+        label: Minimum Risk Score Threshold
+        description: Enter a number value to be the minimum score required to ingest an asset
+        required: True
+        default: '0'
+      - name: include_same_vulnerabilities
+        label: Include Unchanged Vulnerabilities
+        description: Include vulnerabilities that have not changed since last scan (in addition to new and remediated)
+        boolean: True
+        default: False
+      - name: verify_ssl
+        label: Verify SSL Certificate
+        description: Enable or disable SSL certificate verification
+        boolean: True
+        default: True
+      - name: disable_proxies
+        label: Disable Proxies
+        description: If true, specifies that this feed should not honor any proxies setup in ThreatQuotient
+        boolean: True
+        default: False
+    ingest_rules:
+      attributes:
+        - name: Total Vulnerabilities
+          rule: update
+        - name: Assessed for Policies
+          rule: update
+        - name: Assessed for Vulnerabilities
+          rule: update
+        - name: Risk Score
+          rule: update
+    source:
+      http:
+        url: !tmpl "{{user_fields.api_base_url}}/integration/assets"
+        method: POST
+        body: !json {}
+        <<: *request_vars
+        <<: *auth
+        <<: *pagination
+        # Dummy headers to get manual run button
+        headers:
+          X-Api-Key: !expr user_fields.api_key
+          Accept: application/json
+          Content-Type: application/json
+          ThreatQ: !expr run_meta.since
+    filters:
+      - parse-json
+      - get: data
+      - iterate
+      # Validation / Filtering
+      - drop: !expr user_fields.only_vulnerable and (value.get('total_vulnerabilities', 0) == 0)
+      - drop: !expr user_fields.risk_score_threshold and (user_fields.risk_score_threshold | int) > (value.get('risk_score', 0))
+      
+      # Extract CVEs from vulnerability arrays (new, same, remediated)
+      - set:
+          all_vulnerabilities: !expr "value.get('new', [])"
+      - if:
+          condition: !expr "user_fields.include_same_vulnerabilities and value.get('same')"
+          filters:
+            - set:
+                all_vulnerabilities: !expr "value.all_vulnerabilities + value.get('same', [])"
+      
+      - set:
+          tags: !expr "value.get('tags', [])"
+          services: !expr "value.get('services', [])"
+      
+      # Process tags for attributes
+      - set:
+          tag_attributes: !expr value.tags
+      - filter-mapping:
+          tag_attributes:
+            each:
+              - chain:
+                - drop: !expr "value.get('type', '').lower() == 'custom'"
+                - new:
+                    name: !expr value.type.title()
+                    value: !expr value.name
+          tags:
+            each:
+              - new: !expr "value.get('name', '')[:50]"
+          services:
+            chain:
+              - each:
+                - new: !expr "[value.get('vendor', ''), value.get('product', ''), value.get('name', '')]"
+              - each:
+                - each:
+                  - drop: !expr not value
+              - each:
+                - new: !expr "' - '.join(value)"
+      
+      # Process CVEs - extract vulnerability IDs that are CVEs from new/same arrays
+      - filter-mapping:
+          all_vulnerabilities:
+            each:
+              - chain:
+                - drop: !expr "not value.get('id') or 'cve' not in value.id.lower()"
+                - new: !expr value.id.upper()
+      
+      # Build asset name
+      - set:
+          asset_name: !expr "value.get('ip', 'Unknown')"
+      - if:
+          condition: !expr "value.get('host_name')"
+          filters:
+            - set:
+                asset_name: !tmpl "{{value.host_name}} ({{value.ip}})"
+      
+      # Create description
+      - <<: *create_description
+      
+      # Set attributes - Cloud API returns different field names than on-prem
+      - set:
+          attributes:
+            - name: IP Address
+              value: !expr "value.get('ip', None)"
+            - condition: !expr "value.get('host_name')"
+              name: Hostname
+              value: !expr "value.get('host_name', None)"
+            - name: Asset ID
+              value: !expr value.id
+            - name: insightVM Link
+              value: !tmpl "{{user_fields.api_base_url.replace('/vm/v4', '/vm').replace('api.', '')}}#/assets/{{value.id}}"
+            - name: Operating System
+              value: !expr "value.get('os_description', None)"
+            - name: OS Family
+              value: !expr "value.get('os_family', None)"
+            - name: OS Vendor
+              value: !expr "value.get('os_vendor', None)"
+            - name: Installed Service
+              value: !expr value.services
+            - name: Asset Type
+              value: !expr "value.get('type', None)"
+            - name: Total Vulnerabilities
+              value: !expr "value.get('total_vulnerabilities', 0)"
+            - name: Critical Vulnerabilities
+              value: !expr "value.get('critical_vulnerabilities', 0)"
+            - name: Severe Vulnerabilities
+              value: !expr "value.get('severe_vulnerabilities', 0)"
+            - name: Moderate Vulnerabilities
+              value: !expr "value.get('moderate_vulnerabilities', 0)"
+            - name: Exploits
+              value: !expr "value.get('exploits', 0)"
+            - name: Malware Kits
+              value: !expr "value.get('malware_kits', 0)"
+            - name: Risk Score
+              value: !expr "value.get('risk_score', 0)"
+            - name: Assessed for Policies
+              value: !expr "bool_map.get(str(value.get('assessed_for_policies', False)), 'False')"
+            - name: Assessed for Vulnerabilities
+              value: !expr "bool_map.get(str(value.get('assessed_for_vulnerabilities', False)), 'False')"
+            - name: Last Scan Start
+              value: !expr "value.get('last_scan_start', None)"
+            - name: Last Scan End
+              value: !expr "value.get('last_scan_end', None)"
+            - name: Last Assessed for Vulnerabilities
+              value: !expr "value.get('last_assessed_for_vulnerabilities', None)"
+            - name: MAC Address
+              value: !expr "value.get('mac', None)"
+    report:
+      tag-sets:
+        report_tags:
+          items:
+            - name: !expr data.tags
+      attribute-sets:
+        tag_attributes:
+          items: !expr data.tag_attributes
+        report_attributes:
+          items:
+            - name: IP Address
+              value: !expr "data.get('ip', None)"
+            - name: Hostname
+              value: !expr "data.get('host_name', None)"
+            - name: Asset Link
+              value: !tmpl "{{user_fields.api_base_url.replace('/vm/v4', '/vm').replace('api.', '')}}#/assets/{{data.id}}"
+            - name: Total Vulnerabilities
+              value: !expr "data.get('total_vulnerabilities', 0)"
+            - name: Risk Score
+              value: !expr "data.get('risk_score', 0)"
+            - name: Operating System
+              value: !expr "data.get('os_description', None)"
+      indicator-sets:
+        default:
+          items:
+            - type: CVE
+              value: !expr data.all_vulnerabilities
+      asset-sets:
+        default:
+          items:
+            - value: !expr data.asset_name
+              attributes: !expr data.attributes + data.tag_attributes
+              description: !expr data.description
+              tags:
+                - name: !expr data.tags
+              indicators:
+                - type: CVE
+                  value: !expr data.all_vulnerabilities
+      report-sets:
+        default:
+          attribute-sets:
+            - report_attributes
+            - tag_attributes
+          tag-sets:
+            - report_tags
+          related:
+            asset:
+              - default
+            indicator:
+              - default
+          items:
+            - value: !tmpl "Rapid7 insightVM Cloud Asset Report: {{data.asset_name}}"
+              description: !expr data.description
+              published_at: !expr "data.get('last_scan_end', None)"
