@@ -14,11 +14,11 @@
 # - Australia: https://au.api.insight.rapid7.com/vm/v4
 # - Japan: https://ap.api.insight.rapid7.com/vm/v4
 #
-# VERSION: 1.0.5 (Cloud Conversion)
+# VERSION: 1.0.6 (Cloud Conversion)
 # CONVERTED: 2025-10-23
 # UPDATED: 2025-12-02
 #
-version: "1.0.5"
+version: "1.0.6"
 required_threatq_version: ">=5.10.0"
 
 template_values:
@@ -180,9 +180,14 @@ feeds:
           tags: !expr "value.get('tags', [])"
           services: !expr "value.get('services', [])"
       
-      # Process tags for attributes
+      # Extract site tags (sites are represented as tags with type="SITE" per Rapid7 API)
       - set:
-          tag_attributes: !expr value.tags
+          site_tags: !expr "[tag for tag in value.tags if isinstance(tag, dict) and tag.get('type', '').upper() == 'SITE']"
+          site_names: !expr "[tag.get('name', '') for tag in value.site_tags if tag.get('name')]"
+      
+      # Process tags for attributes (excluding SITE tags as they're handled separately)
+      - set:
+          tag_attributes: !expr "[tag for tag in value.tags if not (isinstance(tag, dict) and tag.get('type', '').upper() == 'SITE')]"
       - filter-mapping:
           tag_attributes:
             each:
@@ -272,6 +277,9 @@ feeds:
               value: !expr "value.get('last_assessed_for_vulnerabilities', None)"
             - name: MAC Address
               value: !expr "value.get('mac', None)"
+            - condition: !expr "value.site_names and len(value.site_names) > 0"
+              name: Site
+              value: !expr "'; '.join(value.site_names) if len(value.site_names) > 1 else value.site_names[0]"
     report:
       tag-sets:
         report_tags:
@@ -288,6 +296,9 @@ feeds:
               value: !expr "data.get('host_name', None)"
             - name: Asset Link
               value: !tmpl "{{user_fields.api_base_url.replace('/vm/v4', '/vm').replace('api.', '')}}#/assets/{{data.id}}"
+            - condition: !expr "data.site_names and len(data.site_names) > 0"
+              name: Site
+              value: !expr "'; '.join(data.site_names) if len(data.site_names) > 1 else data.site_names[0]"
             - name: Total Vulnerabilities
               value: !expr "data.get('total_vulnerabilities', 0)"
             - name: Risk Score

@@ -313,6 +313,13 @@ rapid7-insightvm-integration/
 
 ## Changelog
 
+### Version 1.0.6 (2025-12-02)
+- Fixed pagination to fetch all assets (not just first page)
+- Added Site attribute extraction from SITE-type tags (per Rapid7 API documentation)
+- Sites are now properly extracted as attributes from asset tags where type="SITE"
+- Updated to follow Rapid7 API v4 documentation for site handling
+- Improved site attribute handling for single and multiple sites
+
 ### Version 1.3.0 (2025-10-15)
 - Fixed HTTP method from POST to GET for assets endpoint
 - Fixed pagination to use `totalPages` instead of `total_pages`
