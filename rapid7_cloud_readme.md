@@ -313,6 +313,12 @@ rapid7-insightvm-integration/
 
 ## Changelog
 
+### Version 1.0.8 (2025-12-02)
+- Fixed pagination to use template_values and prev_request_params for proper page tracking
+- Removed timeout from request_vars (not supported in all ThreatQ versions)
+- Updated POST request body handling to use params field
+- Removed hardcoded query parameters from URL (now handled by pagination)
+
 ### Version 1.0.7 (2025-12-02)
 - Fixed bug where site_names extraction referenced site_tags in the same set block
 - Split site_tags and site_names into separate set operations to fix variable reference issue
