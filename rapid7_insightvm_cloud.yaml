@@ -183,6 +183,7 @@ feeds:
       # Extract site tags (sites are represented as tags with type="SITE" per Rapid7 API)
       - set:
           site_tags: !expr "[tag for tag in value.tags if isinstance(tag, dict) and tag.get('type', '').upper() == 'SITE']"
+      - set:
           site_names: !expr "[tag.get('name', '') for tag in value.site_tags if tag.get('name')]"
       
       # Process tags for attributes (excluding SITE tags as they're handled separately)
