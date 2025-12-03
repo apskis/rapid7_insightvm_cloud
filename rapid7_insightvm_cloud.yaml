@@ -14,11 +14,11 @@
 # - Australia: https://au.api.insight.rapid7.com/vm/v4
 # - Japan: https://ap.api.insight.rapid7.com/vm/v4
 #
-# VERSION: 1.0.6 (Cloud Conversion)
+# VERSION: 1.0.7 (Cloud Conversion)
 # CONVERTED: 2025-10-23
 # UPDATED: 2025-12-02
 #
-version: "1.0.6"
+version: "1.0.7"
 required_threatq_version: ">=5.10.0"
 
 template_values:

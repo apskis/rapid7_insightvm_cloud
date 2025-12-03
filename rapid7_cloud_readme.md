@@ -313,6 +313,10 @@ rapid7-insightvm-integration/
 
 ## Changelog
 
+### Version 1.0.7 (2025-12-02)
+- Fixed bug where site_names extraction referenced site_tags in the same set block
+- Split site_tags and site_names into separate set operations to fix variable reference issue
+
 ### Version 1.0.6 (2025-12-02)
 - Fixed pagination to fetch all assets (not just first page)
 - Added Site attribute extraction from SITE-type tags (per Rapid7 API documentation)
