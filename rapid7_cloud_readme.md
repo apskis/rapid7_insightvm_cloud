@@ -313,10 +313,14 @@ rapid7-insightvm-integration/
 
 ## Changelog
 
+### Version 1.0.9 (2025-12-02)
+- Fixed pagination size parameter to use !expr tag for template_value reference
+- Fixed POST request body to use body field with !json tag instead of params field
+- Corrected pagination and request body configuration per ThreatQ documentation
+
 ### Version 1.0.8 (2025-12-02)
 - Fixed pagination to use template_values and prev_request_params for proper page tracking
 - Removed timeout from request_vars (not supported in all ThreatQ versions)
-- Updated POST request body handling to use params field
 - Removed hardcoded query parameters from URL (now handled by pagination)
 
 ### Version 1.0.7 (2025-12-02)

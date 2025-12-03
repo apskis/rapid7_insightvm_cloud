@@ -16,8 +16,12 @@ ENV/
 
 # Test/debug scripts
 check_yaml.py
-check_yaml.zip
-rapid7_insightvm_cloud.zip
+
+# Archive files
+*.zip
+
+# Assets folder
+assets/
 
 # IDE
 .vscode/

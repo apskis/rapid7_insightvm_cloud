@@ -14,11 +14,11 @@
 # - Australia: https://au.api.insight.rapid7.com/vm/v4
 # - Japan: https://ap.api.insight.rapid7.com/vm/v4
 #
-# VERSION: 1.0.8 (Cloud Conversion)
+# VERSION: 1.0.9 (Cloud Conversion)
 # CONVERTED: 2025-10-23
 # UPDATED: 2025-12-02
 #
-version: "1.0.8"
+version: "1.0.9"
 required_threatq_version: ">=5.10.0"
 
 template_values:
@@ -48,7 +48,7 @@ _anchors:
         size: !expr 100
       condition: !expr "prev_response_data and prev_response_data.metadata and prev_response_data.metadata.number < prev_response_data.metadata.totalPages - 1"
       params:
-        size: size
+        size: !expr size
         page: !expr "(prev_request_params.page or 0) + 1"
 
   - &create_description
@@ -150,7 +150,7 @@ feeds:
       http:
         url: !tmpl "{{user_fields.api_base_url}}/integration/assets"
         method: POST
-        params: '{"asset": null, "vulnerability": null}'
+        body: !json {"asset": null, "vulnerability": null}
         <<: *request_vars
         <<: *auth
         <<: *pagination
